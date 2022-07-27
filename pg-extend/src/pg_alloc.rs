@@ -65,7 +65,7 @@ impl PgAllocator {
         // TODO: see mctx.c in Postgres' source this probably needs more validation
         let ptr = pg_data as *mut c_void;
         //  pg_sys::pfree(pg_data as *mut c_void)
-        let methods = *self.0.as_ref().methods;
+        let methods = self.0.as_ref().methods;
         crate::guard_pg(|| {
             methods.free_p.expect("free_p is none")(self.0.as_ref() as *const _ as *mut _, ptr);
         });

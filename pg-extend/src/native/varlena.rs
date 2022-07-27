@@ -86,8 +86,8 @@ impl<'a> VarLenA<'a> {
 
         unsafe {
             match self {
-                VarAtt4b(varlena) => varlena.va_data.as_slice(len),
-                VarAtt1b(varlena) => varlena.va_data.as_slice(len),
+                VarAtt4b(varlena) => varlena.va_data.as_slice(),
+                VarAtt1b(varlena) => varlena.va_data.as_slice(),
                 _ => unimplemented!("this VarLenA type not yet supported: {:?}", self),
             }
         }

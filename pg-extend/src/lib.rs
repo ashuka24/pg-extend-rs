@@ -48,6 +48,8 @@ macro_rules! pg_magic {
                 namedatalen: pg_sys::NAMEDATALEN as c_int,
                 float4byval: pg_sys::USE_FLOAT4_BYVAL as c_int,
                 float8byval: pg_sys::USE_FLOAT8_BYVAL as c_int,
+                product: pg_sys::Pg_magic_product_code_PgMagicProductGreenplum as c_int,
+                headerversion: pg_sys::GP_HEADER_VERSION_NUM as c_int,
             };
 
             // TODO: is this a good idea here?

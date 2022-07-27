@@ -138,12 +138,10 @@ impl<T: ForeignData> ForeignWrapper<T> {
             pg_sys::create_foreignscan_path(
                 root,
                 base_rel,
-                std::ptr::null_mut(),
                 (*base_rel).rows,
                 // TODO: real costs
                 pg_sys::Cost::from(10),
                 pg_sys::Cost::from(0),
-                std::ptr::null_mut(),
                 std::ptr::null_mut(),
                 std::ptr::null_mut(),
                 std::ptr::null_mut(),
@@ -159,7 +157,6 @@ impl<T: ForeignData> ForeignWrapper<T> {
         _best_path: *mut pg_sys::ForeignPath,
         tlist: *mut pg_sys::List,
         scan_clauses: *mut pg_sys::List,
-        outer_plan: *mut pg_sys::Plan,
     ) -> *mut pg_sys::ForeignScan {
         let scan_relid = (*baserel).relid;
         let scan_clauses = pg_sys::extract_actual_clauses(scan_clauses, pgbool!(false));
@@ -169,9 +166,6 @@ impl<T: ForeignData> ForeignWrapper<T> {
             scan_relid,
             scan_clauses,
             std::ptr::null_mut(), // fdw_private
-            std::ptr::null_mut(), // fdw_scan_tlist
-            std::ptr::null_mut(), // fdw_recheck_quals
-            outer_plan,
         )
     }
 
@@ -245,10 +239,10 @@ impl<T: ForeignData> ForeignWrapper<T> {
         unsafe { pg_sys::_slot_getsomeattrs(slot, (*(*slot).tts_tupleDescriptor).natts) }
 
         let data: &[pg_sys::Datum] =
-            unsafe { std::slice::from_raw_parts((*slot).tts_values, (*slot).tts_nvalid as usize) };
+            unsafe { std::slice::from_raw_parts((*slot).PRIVATE_tts_values, (*slot).PRIVATE_tts_nvalid as usize) };
 
         let isnull =
-            unsafe { std::slice::from_raw_parts((*slot).tts_isnull, (*slot).tts_nvalid as usize) };
+            unsafe { std::slice::from_raw_parts((*slot).PRIVATE_tts_isnull, (*slot).PRIVATE_tts_nvalid as usize) };
 
         let mut t = HashMap::new();
 
@@ -566,13 +560,13 @@ impl<T: ForeignData> ForeignWrapper<T> {
             #[cfg(feature = "postgres-11")]
             ReparameterizeForeignPathByChild: None,
 
-            #[cfg(any(feature = "postgres-10", feature = "postgres-11"))]
-            ShutdownForeignScan: None,
-            #[cfg(any(feature = "postgres-10", feature = "postgres-11"))]
-            ReInitializeDSMForeignScan: None,
+            // #[cfg(any(feature = "postgres-10", feature = "postgres-11"))]
+            // ShutdownForeignScan: None,
+            // #[cfg(any(feature = "postgres-10", feature = "postgres-11"))]
+            // ReInitializeDSMForeignScan: None,
 
-            GetForeignJoinPaths: None,
-            GetForeignUpperPaths: None,
+            // GetForeignJoinPaths: None,
+            // GetForeignUpperPaths: None,
             AddForeignUpdateTargets: Some(Self::add_foreign_update_targets),
             PlanForeignModify: None,
             BeginForeignModify: Some(Self::begin_foreign_modify),
@@ -583,26 +577,26 @@ impl<T: ForeignData> ForeignWrapper<T> {
             EndForeignModify: None,
 
             IsForeignRelUpdatable: None,
-            PlanDirectModify: None,
-            BeginDirectModify: None,
-            IterateDirectModify: None,
-            EndDirectModify: None,
-            GetForeignRowMarkType: None,
-            RefetchForeignRow: None,
-            RecheckForeignScan: None,
+            // PlanDirectModify: None,
+            // BeginDirectModify: None,
+            // IterateDirectModify: None,
+            // EndDirectModify: None,
+            // GetForeignRowMarkType: None,
+            // RefetchForeignRow: None,
+            // RecheckForeignScan: None,
 
             ExplainForeignScan: None,
             ExplainForeignModify: None,
-            ExplainDirectModify: None,
+            // ExplainDirectModify: None,
             AnalyzeForeignTable: None,
 
-            ImportForeignSchema: None,
-            IsForeignScanParallelSafe: None,
+            // ImportForeignSchema: None,
+            // IsForeignScanParallelSafe: None,
 
-            EstimateDSMForeignScan: None,
-            InitializeDSMForeignScan: None,
+            // EstimateDSMForeignScan: None,
+            // InitializeDSMForeignScan: None,
 
-            InitializeWorkerForeignScan: None,
+            // InitializeWorkerForeignScan: None,
         });
         // TODO: this isn't quite right, it will never be from_raw loaded
         // so it won't be cleaned properly
