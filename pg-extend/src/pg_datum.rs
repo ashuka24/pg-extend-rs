@@ -142,7 +142,7 @@ impl From<i64> for PgDatum<'_> {
     }
 }
 
-#[deprecated(note = "String is not Zero cost, please use the CString variant")]
+// #[deprecated(note = "String is not Zero cost, please use the CString variant")]
 impl<'s> TryFromPgDatum<'s> for String {
     fn try_from<'mc>(
         memory_context: &'mc PgAllocator,
@@ -173,7 +173,7 @@ impl From<String> for PgDatum<'_> {
     }
 }
 
-#[deprecated(note = "String is not Zero cost, please use the CString variant")]
+// #[deprecated(note = "String is not Zero cost, please use the CString variant")]
 impl<'s> TryFromPgDatum<'s> for CString {
     fn try_from<'mc>(_: &'mc PgAllocator, datum: PgDatum<'mc>) -> Result<Self, &'static str>
     where
@@ -325,9 +325,9 @@ impl From<()> for PgDatum<'static> {
     }
 }
 
-// FIXME: wrong lifetime
-impl From<Datum> for PgDatum<'static> {
-    fn from(datum: Datum) -> PgDatum<'static> {
-        PgDatum(Some(datum), PhantomData)
-    }
-}
+// // FIXME: wrong lifetime
+// impl From<Datum> for PgDatum<'static> {
+//     fn from(datum: Datum) -> PgDatum<'static> {
+//         PgDatum(Some(datum), PhantomData)
+//     }
+// }

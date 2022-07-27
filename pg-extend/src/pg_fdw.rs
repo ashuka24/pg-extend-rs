@@ -10,6 +10,7 @@ use std::ffi::{CStr, CString};
 
 use crate::pg_alloc::PgAllocator;
 use crate::{error, pg_datum, pg_sys, pg_type, warn};
+use std::ptr::null_mut;
 
 /// A map from column names to data types. Tuple order is not currently
 /// preserved, it may be in the future.
@@ -241,7 +242,7 @@ impl<T: ForeignData> ForeignWrapper<T> {
         let attrs = unsafe { Self::tupdesc_attrs(tupledesc) };
 
         // Make sure the slot is fully populated
-        unsafe { pg_sys::slot_getallattrs(slot) }
+        unsafe { pg_sys::_slot_getsomeattrs(slot, (*(*slot).tts_tupleDescriptor).natts) }
 
         let data: &[pg_sys::Datum] =
             unsafe { std::slice::from_raw_parts((*slot).tts_values, (*slot).tts_nvalid as usize) };
@@ -319,13 +320,13 @@ impl<T: ForeignData> ForeignWrapper<T> {
             );
 
             #[cfg(not(feature = "postgres-11"))]
-            let tuple = pg_sys::heap_form_tuple(
+            let tuple = pg_sys::heaptuple_form_to(
                 tupledesc as *mut _,
                 data.as_mut_slice().as_mut_ptr(),
-                isnull.as_mut_slice().as_mut_ptr(),
+                isnull.as_mut_slice().as_mut_ptr(), null_mut(), null_mut()
             );
 
-            pg_sys::ExecStoreTuple(
+            pg_sys::ExecStoreHeapTuple(
                 tuple,
                 slot,
                 pg_sys::InvalidBuffer as pg_sys::Buffer,
@@ -509,39 +510,40 @@ impl<T: ForeignData> ForeignWrapper<T> {
         }
     }
 
-    unsafe extern "C" fn import_foreign_schema(
-        stmt: *mut pg_sys::ImportForeignSchemaStmt,
-        _server_oid: pg_sys::Oid,
-    ) -> *mut pg_sys::List {
-        // TODO: real server opts
-        let server_opts = HashMap::new();
-
-        let server_name_cstr = CStr::from_ptr((*stmt).server_name);
-        let remote_schema_cstr = CStr::from_ptr((*stmt).remote_schema);
-        let local_schema_cstr = CStr::from_ptr((*stmt).local_schema);
-
-        // TODO: handle unicode errors here
-        let server_name = server_name_cstr.to_string_lossy().to_string();
-        let remote_schema = remote_schema_cstr.to_string_lossy().to_string();
-        let local_schema = local_schema_cstr.to_string_lossy().to_string();
-
-        let stmts = match T::schema(server_opts, server_name, remote_schema, local_schema) {
-            Some(s) => s,
-            None => return std::ptr::null_mut(),
-        };
-
-        // Concat all the statements together
-        let mut list = std::ptr::null_mut() as *mut pg_sys::List;
-
-        for stmt in stmts {
-            let cstmt = CString::new(stmt).unwrap();
-
-            let dup = pg_sys::pstrdup(cstmt.as_ptr()) as *mut std::ffi::c_void;
-            list = pg_sys::lappend(list, dup);
-        }
-
-        list
-    }
+    // #[cfg(any(feature = "postgres-10", feature = "postgres-11"))]
+    // unsafe extern "C" fn import_foreign_schema(
+    //     stmt: *mut pg_sys::ImportForeignSchemaStmt,
+    //     _server_oid: pg_sys::Oid,
+    // ) -> *mut pg_sys::List {
+    //     // TODO: real server opts
+    //     let server_opts = HashMap::new();
+    //
+    //     let server_name_cstr = CStr::from_ptr((*stmt).server_name);
+    //     let remote_schema_cstr = CStr::from_ptr((*stmt).remote_schema);
+    //     let local_schema_cstr = CStr::from_ptr((*stmt).local_schema);
+    //
+    //     // TODO: handle unicode errors here
+    //     let server_name = server_name_cstr.to_string_lossy().to_string();
+    //     let remote_schema = remote_schema_cstr.to_string_lossy().to_string();
+    //     let local_schema = local_schema_cstr.to_string_lossy().to_string();
+    //
+    //     let stmts = match T::schema(server_opts, server_name, remote_schema, local_schema) {
+    //         Some(s) => s,
+    //         None => return std::ptr::null_mut(),
+    //     };
+    //
+    //     // Concat all the statements together
+    //     let mut list = std::ptr::null_mut() as *mut pg_sys::List;
+    //
+    //     for stmt in stmts {
+    //         let cstmt = CString::new(stmt).unwrap();
+    //
+    //         let dup = pg_sys::pstrdup(cstmt.as_ptr()) as *mut std::ffi::c_void;
+    //         list = pg_sys::lappend(list, dup);
+    //     }
+    //
+    //     list
+    // }
 
     /// Turn this into an actual foreign data wrapper object.
     /// Postgres creates fdws by having a function return a special
@@ -593,7 +595,8 @@ impl<T: ForeignData> ForeignWrapper<T> {
             ExplainForeignModify: None,
             ExplainDirectModify: None,
             AnalyzeForeignTable: None,
-            ImportForeignSchema: Some(Self::import_foreign_schema),
+
+            ImportForeignSchema: None,
             IsForeignScanParallelSafe: None,
 
             EstimateDSMForeignScan: None,
